@@ -166,6 +166,17 @@ class Program
 
     private static HttpResponse HandleFiles(HttpRequest request)
     {
+        if (request.HttpMethod == "GET")
+           return HandleFilesGet(request);
+        
+        if (request.HttpMethod == "POST")
+            return HandleFilesPost(request);
+         
+        return HandleNotFound(request, "Handle Files with the HttpMethod is not supported");
+    }
+
+    private static HttpResponse HandleFilesPost(HttpRequest request)
+    {
         HashSet<string> keyValueArgumentsHandled = new HashSet<string>() { "--directory" };
         var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
         if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath))
@@ -175,14 +186,39 @@ class Program
             return HandleNotFound(request, "Directory path is missing or does not exist.");
         }
 
-        string fileNameToCreate = request.RequestTarget["/files/".Length..];
-        if (string.IsNullOrEmpty(fileNameToCreate))
+        string fileName = request.RequestTarget["/files/".Length..];
+        if (string.IsNullOrEmpty(fileName))
         {
             Console.WriteLine("File name is missing.");
             return HandleNotFound(request, "File name is missing.");
         }
 
-        string filePath = Path.Combine(directoryPath, fileNameToCreate);
+        string filePath = Path.Combine(directoryPath, fileName);
+        File.WriteAllText(filePath, request.Body);
+        return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.Created)
+            .Build();  
+    }
+    private static HttpResponse HandleFilesGet(HttpRequest request)
+    {
+        HashSet<string> keyValueArgumentsHandled = new HashSet<string>() { "--directory" };
+        var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
+        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath))
+            && !Directory.Exists(directoryPath))
+        {
+            Console.WriteLine("Directory path is missing or does not exist.");
+            return HandleNotFound(request, "Directory path is missing or does not exist.");
+        }
+
+        string fileName = request.RequestTarget["/files/".Length..];
+        if (string.IsNullOrEmpty(fileName))
+        {
+            Console.WriteLine("File name is missing.");
+            return HandleNotFound(request, "File name is missing.");
+        }
+
+        string filePath = Path.Combine(directoryPath, fileName);
         if (!File.Exists(filePath))
         {
             return HandleNotFound(request, string.Empty);
@@ -196,7 +232,7 @@ class Program
             .SetStatusCode(HttpStatusCode.OK)
             .SetHeader("Content-Type", "application/octet-stream")
             .SetBody(fileContents)
-            .Build();
+            .Build(); 
     }
 
     private static Dictionary<string, string> ParseKeyValueArgs(HashSet<string> keyValueArgumentsHandled,

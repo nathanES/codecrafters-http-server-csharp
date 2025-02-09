@@ -14,7 +14,8 @@ public class HttpResponse
     public string Format()
     {
         var responseBuilder = new StringBuilder();
-        responseBuilder.Append($"{HttpVersion} {(int)StatusCode} {StatusCode}\r\n");
+        responseBuilder.Append($"{HttpVersion} {(int)StatusCode} {GetReasonPhrase(StatusCode)}\r\n");
+
 
         foreach (var header in Headers)
             responseBuilder.Append($"{header.Key}: {header.Value}\r\n");
@@ -23,6 +24,23 @@ public class HttpResponse
         if (Body != null)
             responseBuilder.Append(Body);
         return responseBuilder.ToString();
+    }
+    private static readonly Dictionary<HttpStatusCode, string> StatusReasonPhrases = new()
+    {
+        { HttpStatusCode.OK, "OK" },
+        { HttpStatusCode.Created, "Created" },
+        { HttpStatusCode.NoContent, "No Content" },
+        { HttpStatusCode.BadRequest, "Bad Request" },
+        { HttpStatusCode.Unauthorized, "Unauthorized" },
+        { HttpStatusCode.Forbidden, "Forbidden" },
+        { HttpStatusCode.NotFound, "Not Found" },
+        { HttpStatusCode.InternalServerError, "Internal Server Error" },
+        { HttpStatusCode.NotImplemented, "Not Implemented" }
+    };
+
+    private static string GetReasonPhrase(HttpStatusCode statusCode)
+    {
+        return StatusReasonPhrases.TryGetValue(statusCode, out var phrase) ? phrase : "Unknown Status";
     }
  
     public class HttpResponseBuilder

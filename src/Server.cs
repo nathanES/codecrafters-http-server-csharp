@@ -177,24 +177,20 @@ class Program
             return HandleNotFound(request, "File name is missing.");
         }
         string filePath = Path.Combine(directoryPath, fileNameToCreate);
-        if (File.Exists(filePath))
+        if (!File.Exists(filePath))
         {
-            File.AppendAllText(filePath, request.Body);
+           return HandleNotFound(request, string.Empty); 
+        }
+        string fileContents = File.ReadAllText(filePath);
+        Console.WriteLine($"FileContents : {fileContents}");
+        
             return new HttpResponse.HttpResponseBuilder()
                 .SetHttpVersion(request.HttpVersion)
                 .SetStatusCode(HttpStatusCode.OK)
                 .SetHeader("Content-Type", "application/octet-stream")
+                .SetBody(fileContents)
                 .Build();
-        }
-        else
-        {
-            File.WriteAllText(filePath, request.Body);
-            return new HttpResponse.HttpResponseBuilder()
-                .SetHttpVersion(request.HttpVersion)
-                .SetStatusCode(HttpStatusCode.Created)
-                .SetHeader("Content-Type", "application/octet-stream")
-                .Build();
-        }
+        
         
         
     }

@@ -166,21 +166,21 @@ class Program
 
     private static HttpResponse HandleFiles(HttpRequest request)
     {
-        if (request.HttpMethod == "GET")
-           return HandleFilesGet(request);
-        
-        if (request.HttpMethod == "POST")
-            return HandleFilesPost(request);
-         
-        return HandleNotFound(request, "Handle Files with the HttpMethod is not supported");
+        return request.HttpMethod switch
+        {
+            "GET" => HandleFilesGet(request),
+            "POST" => HandleFilesPost(request),
+            _ => HandleNotFound(request, $"Handle Files with the HttpMethod {request.HttpMethod} is not supported")
+        };
     }
 
     private static HttpResponse HandleFilesPost(HttpRequest request)
     {
         HashSet<string> keyValueArgumentsHandled = new HashSet<string>() { "--directory" };
         var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
-        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath))
-            && !Directory.Exists(directoryPath))
+        if (!argv.TryGetValue("--directory", out string? directoryPath) 
+            || string.IsNullOrEmpty(directoryPath)
+            || !Directory.Exists(directoryPath))
         {
             Console.WriteLine("Directory path is missing or does not exist.");
             return HandleNotFound(request, "Directory path is missing or does not exist.");
@@ -194,7 +194,7 @@ class Program
         }
 
         string filePath = Path.Combine(directoryPath, fileName);
-        File.WriteAllText(filePath, request.Body);
+        File.WriteAllText(filePath, request.Body ?? string.Empty);
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.Created)
@@ -204,8 +204,9 @@ class Program
     {
         HashSet<string> keyValueArgumentsHandled = new HashSet<string>() { "--directory" };
         var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
-        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath))
-            && !Directory.Exists(directoryPath))
+        if (!argv.TryGetValue("--directory", out string? directoryPath) 
+            || string.IsNullOrEmpty(directoryPath)
+            || !Directory.Exists(directoryPath))
         {
             Console.WriteLine("Directory path is missing or does not exist.");
             return HandleNotFound(request, "Directory path is missing or does not exist.");

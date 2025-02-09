@@ -4,9 +4,15 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using codecrafters_http_server;
 
 class Program
 {
+    private static readonly Dictionary<string, Func<HttpRequest, HttpResponse>> RequestHandlers =
+        new ()
+        {
+            {"/", HandleRoot},
+        };
     static async Task Main()
     {
         var cts = new CancellationTokenSource();
@@ -58,25 +64,21 @@ class Program
         try
         {
             var buffer = new byte[1024];
-            int requestLength = await socket.ReceiveAsync(buffer);
-            Console.WriteLine($"Received {requestLength} bytes");
-            if (requestLength == 0)
+            var httpRequestLength = await socket.ReceiveAsync(buffer);
+            Console.WriteLine($"Received {httpRequestLength} bytes");
+            if (httpRequestLength == 0)
                 return;
-            var request = Request.Create(buffer, requestLength);
+            
+            var request = HttpRequest.Parse(buffer, httpRequestLength);
+            if (request == null)
+            {
+                Console.WriteLine("Received null request");
+                return;
+            }
             Console.WriteLine($"Received request :{JsonSerializer.Serialize(request, new JsonSerializerOptions{WriteIndented = true})}");
 
-
-            switch (request.RequestTarget)
-            {
-                case "/":
-                    Console.WriteLine("RequestTarget exists");
-                    await socket.SendAsync(Encoding.ASCII.GetBytes($"{request.HttpVersion} 200 OK\r\n\r\n"));
-                    break;
-                default:
-                    Console.WriteLine("RequestTarget not exists");
-                    await socket.SendAsync(Encoding.ASCII.GetBytes($"{request.HttpVersion} 404 Not Found\r\n\r\n"));
-                    break;
-            }
+            
+            await HandleRequest(socket, request); 
             
             Console.WriteLine("ShuttingDown the Socket connection...");
             socket.Shutdown(SocketShutdown.Both);
@@ -93,56 +95,62 @@ class Program
             Console.WriteLine("Socket Connection closed");
         }
     }
-
-    public class Request
+    static async Task HandleRequest(Socket socket, HttpRequest request )
     {
-        public string HttpMethod { get; private set; }
-        public string RequestTarget { get; private set; }
-        public string HttpVersion { get; private set; }
-
-        public class RequestBuilder
+        HttpResponse httpResponse;
+        if (RequestHandlers.TryGetValue(request.RequestTarget, out var handler))
         {
-            private Request _request;
-
-            public RequestBuilder()
-            {
-                _request = new Request();
-            }
-
-            public RequestBuilder SetHttpMethod(string httpMethod)
-            {
-                _request.HttpMethod = httpMethod;
-                return this;
-            }
-            public RequestBuilder SetRequestTarget(string requestTarget)
-            {
-                _request.RequestTarget = requestTarget;
-                return this;
-            } 
-            public RequestBuilder SetHttpVersion(string httpVersion)
-            {
-                _request.HttpVersion = httpVersion;
-                return this;
-            } 
-            public Request Build()
-            {
-                return _request;
-            }
+            Console.WriteLine("RequestTarget : " + request.RequestTarget);
+            httpResponse = handler(request);
         }
-        public static Request Create(byte[] request, int requestLength)
+        else if (request.RequestTarget.StartsWith("/echo/"))
         {
-            return Create(Encoding.ASCII.GetString(request, 0, requestLength));
+            Console.WriteLine("RequestTarget : /echo/");
+            httpResponse = HandleEcho(request);
         }
-
-        public static Request Create(string request)
+        else
         {
-              var requestParts = request.Split("\r\n");
-              var requestLine = requestParts[0].Split(" ");
-              return new RequestBuilder()
-                  .SetHttpMethod(requestLine[0])
-                  .SetRequestTarget(requestLine[1])
-                  .SetHttpVersion(requestLine[2])
-                  .Build();
+            Console.WriteLine("RequestTarget not exists");
+            httpResponse = HandleNotFound(request); 
         }
+        
+        await SendResponse(socket, httpResponse);
+        return;
     }
+
+    private static async Task SendResponse(Socket socket, HttpResponse httpResponse)
+    { 
+        string httpResponseFormatted = httpResponse.Format();
+        Console.WriteLine($"Response: {httpResponseFormatted}");
+        await socket.SendAsync(Encoding.ASCII.GetBytes(httpResponseFormatted));
+    }
+    private static HttpResponse HandleEcho(HttpRequest request)
+    {
+        string value = request.RequestTarget["/echo/".Length..];
+        return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.OK)
+            .SetHeader("Content-Type", "text/plain")
+            .SetBody(value)
+            .Build();
+    }
+
+    private static HttpResponse HandleRoot(HttpRequest request)
+    {
+       return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.OK)
+            .SetBody("Welcome to the HTTP Server!") 
+            .Build();
+    }
+
+    private static HttpResponse HandleNotFound(HttpRequest request)
+    {
+        return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.NotFound)
+            .Build(); 
+    }
+
+
 }

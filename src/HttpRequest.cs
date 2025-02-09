@@ -7,38 +7,48 @@ public class HttpRequest
     public string HttpMethod { get; private set; } = null!;
     public string RequestTarget { get; private set; } = null!;
     public string HttpVersion { get; private set; } = "HTTP/1.1";
-        
     public Dictionary<string, string> Headers { get; private set; } = new();
+    public string? Body { get; private set; }
+    
     public static HttpRequest? Parse(byte[] httpRequest, int httpRequestLength)
     {
         return Parse(Encoding.ASCII.GetString(httpRequest, 0, httpRequestLength));
     }
 
-    private static HttpRequest? Parse(string httpRequest)
+    private static HttpRequest? Parse(string rawRequest)
     {
-        var httpRequestBuilder = new HttpRequestBuilder();
-        var httpRequestParts = httpRequest.Split("\r\n");
-        if(httpRequestParts.Length < 1)
+        if (string.IsNullOrWhiteSpace(rawRequest))
             return null;
-              
-        var httpRequestLine = httpRequestParts[0].Split(" ");
-        if(httpRequestLine.Length < 3)
+        
+        var requestBuilder = new HttpRequestBuilder();
+        var sections = rawRequest.Split(new[]{"\r\n\r\n", "\n\n"},2, StringSplitOptions.None);
+        var headerSection = sections[0]; // RequestLine + Headers
+        var body = sections.Length > 1 ? sections[1] : string.Empty;
+        
+        var headerLines = headerSection.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        if (headerLines.Length < 1)
             return null;
 
-        httpRequestBuilder
-            .SetHttpMethod(httpRequestLine[0])
-            .SetRequestTarget(httpRequestLine[1])
-            .SetHttpVersion(httpRequestLine[2]);
+        var requestLineTokens = headerLines[0].Split(" ");
+        if(requestLineTokens.Length < 3)
+            return null;
+
+        requestBuilder
+            .SetHttpMethod(requestLineTokens[0])
+            .SetRequestTarget(requestLineTokens[1])
+            .SetHttpVersion(requestLineTokens[2]);
         
-        foreach (var header in httpRequestParts[1..^1])
+        foreach (var header in headerLines[1..])
         {
-            string[] headerParts = header.Split(":");
-            if(headerParts.Length < 2)
+            string[] headerKeyValue = header.Split(":",2);
+            if(headerKeyValue.Length < 2)
                 continue;
-            httpRequestBuilder.SetHeader(headerParts[0].Trim(), headerParts[1].Trim());
+            requestBuilder.SetHeader(headerKeyValue[0].Trim(), headerKeyValue[1].Trim());
         } 
+        if(!string.IsNullOrWhiteSpace(body))
+            requestBuilder.SetBody(body);
         
-        return httpRequestBuilder
+        return requestBuilder
             .Build();
     }
         
@@ -70,6 +80,11 @@ public class HttpRequest
             return this;
         }
 
+        public HttpRequestBuilder SetBody(string body)
+        {
+            _httpRequest.Body = body;
+            return this;
+        }
         public HttpRequest? Build()
         {
             return _httpRequest;

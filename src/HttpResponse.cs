@@ -70,6 +70,9 @@ public class HttpResponse
 
         public HttpResponseBuilder SetBody(string body)
         {
+            if(string.IsNullOrWhiteSpace(body))
+                return this;
+            
             _httpResponse.Body = body;
             
             SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());

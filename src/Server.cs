@@ -12,6 +12,7 @@ class Program
         new ()
         {
             {"/", HandleRoot},
+            {"/user-agent", HandleUserAgent},
         };
     static async Task Main()
     {
@@ -124,6 +125,16 @@ class Program
         Console.WriteLine($"Response: {httpResponseFormatted}");
         await socket.SendAsync(Encoding.ASCII.GetBytes(httpResponseFormatted));
     }
+
+
+    private static HttpResponse HandleRoot(HttpRequest request)
+    {
+       return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.OK)
+            .SetBody("Welcome to the HTTP Server!") 
+            .Build();
+    }
     private static HttpResponse HandleEcho(HttpRequest request)
     {
         string value = request.RequestTarget["/echo/".Length..];
@@ -134,15 +145,14 @@ class Program
             .Build();
     }
 
-    private static HttpResponse HandleRoot(HttpRequest request)
+    private static HttpResponse HandleUserAgent(HttpRequest request)
     {
-       return new HttpResponse.HttpResponseBuilder()
+        return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody("Welcome to the HTTP Server!") 
+            .SetBody(request.Headers.TryGetValue("User-Agent", out var header) ? header : string.Empty)
             .Build();
     }
-
     private static HttpResponse HandleNotFound(HttpRequest request)
     {
         return new HttpResponse.HttpResponseBuilder()

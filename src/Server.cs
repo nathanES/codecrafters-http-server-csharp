@@ -179,11 +179,13 @@ class Program
         string filePath = Path.Combine(directoryPath, fileNameToCreate);
         if (File.Exists(filePath))
         {
-            Console.WriteLine($"File already exist: {filePath}");
-            return HandleNotFound(request, "File already exist");
+            File.AppendAllText(filePath, request.Body);
+        }
+        else
+        {
+            File.WriteAllText(filePath, request.Body);
         }
         
-        File.WriteAllText(filePath, request.Body);
         
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)

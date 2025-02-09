@@ -8,7 +8,7 @@ using codecrafters_http_server;
 
 class Program
 {
-    private static readonly Dictionary<string, Func<HttpRequest, HttpResponse>> RequestHandlers =
+    private static readonly Dictionary<string, Func<HttpRequest, HttpResponse>> _requestHandlers =
         new ()
         {
             {"/", HandleRoot},
@@ -99,7 +99,7 @@ class Program
     static async Task HandleRequest(Socket socket, HttpRequest request )
     {
         HttpResponse httpResponse;
-        if (RequestHandlers.TryGetValue(request.RequestTarget, out var handler))
+        if (_requestHandlers.TryGetValue(request.RequestTarget, out var handler))
         {
             Console.WriteLine("RequestTarget : " + request.RequestTarget);
             httpResponse = handler(request);
@@ -109,10 +109,15 @@ class Program
             Console.WriteLine("RequestTarget : /echo/");
             httpResponse = HandleEcho(request);
         }
+        else if (request.RequestTarget.StartsWith("/files/"))
+        {
+            Console.WriteLine("RequestTarget : /files/");
+            httpResponse = HandleFiles(request);
+        }
         else
         {
             Console.WriteLine("RequestTarget not exists");
-            httpResponse = HandleNotFound(request); 
+            httpResponse = HandleNotFound(request, "RequestTarget not exists"); 
         }
         
         await SendResponse(socket, httpResponse);
@@ -153,11 +158,66 @@ class Program
             .SetBody(request.Headers.TryGetValue("User-Agent", out var header) ? header : string.Empty)
             .Build();
     }
-    private static HttpResponse HandleNotFound(HttpRequest request)
+
+    private static HttpResponse HandleFiles(HttpRequest request)
+    {
+        HashSet<string> keyValueArgumentsHandled = new HashSet<string>(){"--directory"};
+        var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
+        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath)) 
+            && !Directory.Exists(directoryPath))
+        {
+            Console.WriteLine("Directory path is missing or does not exist.");
+            return HandleNotFound(request, "Directory path is missing or does not exist.");
+        }
+        
+        string fileNameToCreate = request.RequestTarget["/files/".Length..];
+        if (string.IsNullOrEmpty(fileNameToCreate))
+        {
+            Console.WriteLine("File name is missing.");
+            return HandleNotFound(request, "File name is missing.");
+        }
+        string filePath = Path.Combine(directoryPath, fileNameToCreate);
+        if (File.Exists(filePath))
+        {
+            Console.WriteLine($"File already exist: {filePath}");
+            return HandleNotFound(request, "File already exist");
+        }
+        
+        File.WriteAllText(filePath, request.Body);
+        
+        return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.Created)
+            .SetHeader("Content-Type", "application/octet-stream")
+            .Build();
+        
+    }
+
+    private static Dictionary<string, string> ParseKeyValueArgs(HashSet<string> keyValueArgumentsHandled, string[] arguments)
+    {
+        if(arguments == null || arguments.Length == 0)
+            return new Dictionary<string, string>();
+
+        var argumentsResult = new Dictionary<string, string>();
+ 
+        for (int i = 0; i < arguments.Length; i++)
+        {
+            if(!keyValueArgumentsHandled.Contains(arguments[i]) || i + 1 >= arguments.Length)
+                continue;
+            
+            if(!argumentsResult.ContainsKey(arguments[i]))
+                argumentsResult.Add(arguments[i], arguments[i+1]);
+            i++;
+        }
+        return argumentsResult;
+    }
+
+    private static HttpResponse HandleNotFound(HttpRequest request, string body)
     {
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.NotFound)
+            .SetBody(body)
             .Build(); 
     }
 

@@ -14,14 +14,14 @@ public class HttpResponse
     public string Format()
     {
         var responseBuilder = new StringBuilder();
-        responseBuilder.AppendLine($"{HttpVersion} {(int)StatusCode} {StatusCode}");
+        responseBuilder.Append($"{HttpVersion} {(int)StatusCode} {StatusCode}\r\n");
 
         foreach (var header in Headers)
-            responseBuilder.AppendLine($"{header.Key}: {header.Value}");
+            responseBuilder.Append($"{header.Key}: {header.Value}\r\n");
             
-        responseBuilder.AppendLine();
+        responseBuilder.Append("\r\n");
         if (Body != null)
-            responseBuilder.AppendLine(Body);
+            responseBuilder.Append(Body);
         return responseBuilder.ToString();
     }
  

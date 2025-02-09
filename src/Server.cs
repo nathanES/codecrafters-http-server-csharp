@@ -9,11 +9,12 @@ using codecrafters_http_server;
 class Program
 {
     private static readonly Dictionary<string, Func<HttpRequest, HttpResponse>> _requestHandlers =
-        new ()
+        new()
         {
-            {"/", HandleRoot},
-            {"/user-agent", HandleUserAgent},
+            { "/", HandleRoot },
+            { "/user-agent", HandleUserAgent },
         };
+
     static async Task Main()
     {
         var cts = new CancellationTokenSource();
@@ -69,18 +70,20 @@ class Program
             Console.WriteLine($"Received {httpRequestLength} bytes");
             if (httpRequestLength == 0)
                 return;
-            
+
             var request = HttpRequest.Parse(buffer, httpRequestLength);
             if (request == null)
             {
                 Console.WriteLine("Received null request");
                 return;
             }
-            Console.WriteLine($"Received request :{JsonSerializer.Serialize(request, new JsonSerializerOptions{WriteIndented = true})}");
 
-            
-            await HandleRequest(socket, request); 
-            
+            Console.WriteLine(
+                $"Received request :{JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true })}");
+
+
+            await HandleRequest(socket, request);
+
             Console.WriteLine("ShuttingDown the Socket connection...");
             socket.Shutdown(SocketShutdown.Both);
             Console.WriteLine("Socket connection is shut down");
@@ -96,7 +99,8 @@ class Program
             Console.WriteLine("Socket Connection closed");
         }
     }
-    static async Task HandleRequest(Socket socket, HttpRequest request )
+
+    static async Task HandleRequest(Socket socket, HttpRequest request)
     {
         HttpResponse httpResponse;
         if (_requestHandlers.TryGetValue(request.RequestTarget, out var handler))
@@ -117,15 +121,15 @@ class Program
         else
         {
             Console.WriteLine("RequestTarget not exists");
-            httpResponse = HandleNotFound(request, "RequestTarget not exists"); 
+            httpResponse = HandleNotFound(request, "RequestTarget not exists");
         }
-        
+
         await SendResponse(socket, httpResponse);
         return;
     }
 
     private static async Task SendResponse(Socket socket, HttpResponse httpResponse)
-    { 
+    {
         string httpResponseFormatted = httpResponse.Format();
         Console.WriteLine($"Response: {httpResponseFormatted}");
         await socket.SendAsync(Encoding.ASCII.GetBytes(httpResponseFormatted));
@@ -134,12 +138,13 @@ class Program
 
     private static HttpResponse HandleRoot(HttpRequest request)
     {
-       return new HttpResponse.HttpResponseBuilder()
+        return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody("Welcome to the HTTP Server!") 
+            .SetBody("Welcome to the HTTP Server!")
             .Build();
     }
+
     private static HttpResponse HandleEcho(HttpRequest request)
     {
         string value = request.RequestTarget["/echo/".Length..];
@@ -161,56 +166,57 @@ class Program
 
     private static HttpResponse HandleFiles(HttpRequest request)
     {
-        HashSet<string> keyValueArgumentsHandled = new HashSet<string>(){"--directory"};
+        HashSet<string> keyValueArgumentsHandled = new HashSet<string>() { "--directory" };
         var argv = ParseKeyValueArgs(keyValueArgumentsHandled, Environment.GetCommandLineArgs().Skip(1).ToArray());
-        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath)) 
+        if ((!argv.TryGetValue("--directory", out string? directoryPath) || !string.IsNullOrEmpty(directoryPath))
             && !Directory.Exists(directoryPath))
         {
             Console.WriteLine("Directory path is missing or does not exist.");
             return HandleNotFound(request, "Directory path is missing or does not exist.");
         }
-        
+
         string fileNameToCreate = request.RequestTarget["/files/".Length..];
         if (string.IsNullOrEmpty(fileNameToCreate))
         {
             Console.WriteLine("File name is missing.");
             return HandleNotFound(request, "File name is missing.");
         }
+
         string filePath = Path.Combine(directoryPath, fileNameToCreate);
         if (!File.Exists(filePath))
         {
-           return HandleNotFound(request, string.Empty); 
+            return HandleNotFound(request, string.Empty);
         }
+
         string fileContents = File.ReadAllText(filePath);
         Console.WriteLine($"FileContents : {fileContents}");
-        
-            return new HttpResponse.HttpResponseBuilder()
-                .SetHttpVersion(request.HttpVersion)
-                .SetStatusCode(HttpStatusCode.OK)
-                .SetHeader("Content-Type", "application/octet-stream")
-                .SetBody(fileContents)
-                .Build();
-        
-        
-        
+
+        return new HttpResponse.HttpResponseBuilder()
+            .SetHttpVersion(request.HttpVersion)
+            .SetStatusCode(HttpStatusCode.OK)
+            .SetHeader("Content-Type", "application/octet-stream")
+            .SetBody(fileContents)
+            .Build();
     }
 
-    private static Dictionary<string, string> ParseKeyValueArgs(HashSet<string> keyValueArgumentsHandled, string[] arguments)
+    private static Dictionary<string, string> ParseKeyValueArgs(HashSet<string> keyValueArgumentsHandled,
+        string[] arguments)
     {
-        if(arguments == null || arguments.Length == 0)
+        if (arguments == null || arguments.Length == 0)
             return new Dictionary<string, string>();
 
         var argumentsResult = new Dictionary<string, string>();
- 
+
         for (int i = 0; i < arguments.Length; i++)
         {
-            if(!keyValueArgumentsHandled.Contains(arguments[i]) || i + 1 >= arguments.Length)
+            if (!keyValueArgumentsHandled.Contains(arguments[i]) || i + 1 >= arguments.Length)
                 continue;
-            
-            if(!argumentsResult.ContainsKey(arguments[i]))
-                argumentsResult.Add(arguments[i], arguments[i+1]);
+
+            if (!argumentsResult.ContainsKey(arguments[i]))
+                argumentsResult.Add(arguments[i], arguments[i + 1]);
             i++;
         }
+
         return argumentsResult;
     }
 
@@ -220,8 +226,6 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.NotFound)
             .SetBody(body)
-            .Build(); 
+            .Build();
     }
-
-
 }

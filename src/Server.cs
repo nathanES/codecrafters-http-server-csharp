@@ -180,18 +180,22 @@ class Program
         if (File.Exists(filePath))
         {
             File.AppendAllText(filePath, request.Body);
+            return new HttpResponse.HttpResponseBuilder()
+                .SetHttpVersion(request.HttpVersion)
+                .SetStatusCode(HttpStatusCode.OK)
+                .SetHeader("Content-Type", "application/octet-stream")
+                .Build();
         }
         else
         {
             File.WriteAllText(filePath, request.Body);
+            return new HttpResponse.HttpResponseBuilder()
+                .SetHttpVersion(request.HttpVersion)
+                .SetStatusCode(HttpStatusCode.Created)
+                .SetHeader("Content-Type", "application/octet-stream")
+                .Build();
         }
         
-        
-        return new HttpResponse.HttpResponseBuilder()
-            .SetHttpVersion(request.HttpVersion)
-            .SetStatusCode(HttpStatusCode.Created)
-            .SetHeader("Content-Type", "application/octet-stream")
-            .Build();
         
     }
 

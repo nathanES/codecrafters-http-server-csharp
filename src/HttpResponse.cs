@@ -19,12 +19,13 @@ public class HttpResponse
 
         foreach (var header in Headers)
             responseBuilder.Append($"{header.Key}: {header.Value}\r\n");
-            
+
         responseBuilder.Append("\r\n");
         if (Body != null)
             responseBuilder.Append(Body);
         return responseBuilder.ToString();
     }
+
     private static readonly Dictionary<HttpStatusCode, string> StatusReasonPhrases = new()
     {
         { HttpStatusCode.OK, "OK" },
@@ -42,7 +43,7 @@ public class HttpResponse
     {
         return StatusReasonPhrases.TryGetValue(statusCode, out var phrase) ? phrase : "Unknown Status";
     }
- 
+
     public class HttpResponseBuilder
     {
         private readonly HttpResponse _httpResponse = new();
@@ -68,16 +69,26 @@ public class HttpResponse
             return this;
         }
 
-        public HttpResponseBuilder SetBody(string body)
+
+        public HttpResponseBuilder SetBody(string body, EncodingHandled encoding = EncodingHandled.None)
         {
-            if(string.IsNullOrWhiteSpace(body))
+            if (string.IsNullOrWhiteSpace(body))
                 return this;
-            
-            _httpResponse.Body = body;
-            
-            SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());
-            SetHeaderContentType(body); 
-            
+
+            SetHeaderContentType(body);
+            switch (encoding)
+            {
+                case EncodingHandled.Gzip:
+                    _httpResponse.Body = body;
+                    SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());
+                    SetHeader("Content-Encoding", "gzip");
+                    break;
+                case EncodingHandled.None:
+                default:
+                    _httpResponse.Body = body;
+                    SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());
+                    break;
+            }
             return this;
         }
 
@@ -85,7 +96,7 @@ public class HttpResponse
         {
             if (_httpResponse.Headers.ContainsKey("Content-Type"))
                 return;
-            
+
             string contentType;
 
             // Detect JSON (Improved)
@@ -111,7 +122,7 @@ public class HttpResponse
             // Default to Plain Text
             else
                 contentType = "text/plain";
-            
+
             SetHeader("Content-Type", contentType);
         }
 
@@ -119,7 +130,5 @@ public class HttpResponse
         {
             return _httpResponse;
         }
-            
     }
-        
 }

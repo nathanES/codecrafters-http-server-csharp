@@ -141,7 +141,7 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody("Welcome to the HTTP Server!")
+            .SetBody("Welcome to the HTTP Server!", request.GetEncoding())
             .Build();
     }
 
@@ -151,16 +151,19 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody(value)
+            .SetBody(value, request.GetEncoding())
             .Build();
     }
+
 
     private static HttpResponse HandleUserAgent(HttpRequest request)
     {
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody(request.Headers.TryGetValue("User-Agent", out var header) ? header : string.Empty)
+            .SetBody(request.Headers.TryGetValue("User-Agent", out var header) 
+                ? header : string.Empty,
+                request.GetEncoding())
             .Build();
     }
 
@@ -232,7 +235,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
             .SetHeader("Content-Type", "application/octet-stream")
-            .SetBody(fileContents)
+            .SetBody(fileContents, request.GetEncoding())
             .Build(); 
     }
 
@@ -262,7 +265,7 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.NotFound)
-            .SetBody(body)
+            .SetBody(body, request.GetEncoding())
             .Build();
     }
 }

@@ -68,6 +68,17 @@ public class HttpResponse
             _httpResponse.StatusCode = statusCode;
             return this;
         }
+        public HttpResponseBuilder SetBodyRaw(byte[] bodyRaw)
+        {
+            if (bodyRaw.Length == 0)
+                return this;
+
+            SetHeader("Content-Length", bodyRaw.Length.ToString());
+            SetHeaderContentType(bodyRaw);
+            _httpResponse.BodyRaw = bodyRaw;
+            return this;
+        }
+
 
         public HttpResponseBuilder SetHeader(string name, string value)
         {
@@ -78,14 +89,17 @@ public class HttpResponse
             return this;
         }
 
-        public HttpResponseBuilder SetBodyRaw(byte[] bodyRaw)
+        public HttpResponseBuilder SetContentEncodingHeader(EncodingHandled encoding)
         {
-            if (bodyRaw.Length == 0)
-                return this;
+            switch (encoding)
+            {
+                case EncodingHandled.Gzip:
+                    SetHeader("Content-Encoding", "gzip");
+                    break;
+                default: 
+                    break;
+            }
 
-            SetHeader("Content-Length", bodyRaw.Length.ToString());
-            SetHeaderContentType(bodyRaw);
-            _httpResponse.BodyRaw = bodyRaw;
             return this;
         }
 

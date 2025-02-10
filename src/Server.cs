@@ -142,6 +142,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
             .SetBodyRaw(EncodingHelper.CompressIfNeeded("Welcome to the HTTP Server!", request.GetEncoding()))
+            .SetContentEncodingHeader(request.GetEncoding())
             .Build();
     }
 
@@ -152,6 +153,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
             .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
+            .SetContentEncodingHeader(request.GetEncoding())
             .Build();
     }
 
@@ -166,6 +168,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
             .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
+            .SetContentEncodingHeader(request.GetEncoding())
             .Build();
     }
 
@@ -238,6 +241,7 @@ class Program
             .SetStatusCode(HttpStatusCode.OK)
             .SetHeader("Content-Type", "application/octet-stream")
             .SetBodyRaw(EncodingHelper.CompressIfNeeded(fileContents, request.GetEncoding()))
+            .SetContentEncodingHeader(request.GetEncoding())
             .Build(); 
     }
 
@@ -268,6 +272,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.NotFound)
             .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
+            .SetContentEncodingHeader(request.GetEncoding())
             .Build();
     }
 }

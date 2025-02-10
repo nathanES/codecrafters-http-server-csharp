@@ -1,10 +1,4 @@
-namespace codecrafters_http_server;
-
-public enum EncodingHandled
-{
-    None,
-    Gzip
-}
+namespace codecrafters_http_server.Utils.Encoding;
 
 public static class EncodingHandledExtensions
 {

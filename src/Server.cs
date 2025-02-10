@@ -5,6 +5,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using codecrafters_http_server;
+using codecrafters_http_server.Utils;
+using codecrafters_http_server.Utils.Encoding;
 
 class Program
 {
@@ -130,9 +132,7 @@ class Program
 
     private static async Task SendResponse(Socket socket, HttpResponse httpResponse)
     {
-        string httpResponseFormatted = httpResponse.Format();
-        Console.WriteLine($"Response: {httpResponseFormatted}");
-        await socket.SendAsync(Encoding.ASCII.GetBytes(httpResponseFormatted));
+        await socket.SendAsync(httpResponse.GetRawResponse());
     }
 
 
@@ -141,29 +141,31 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody("Welcome to the HTTP Server!", request.GetEncoding())
+            .SetBodyRaw(EncodingHelper.CompressIfNeeded("Welcome to the HTTP Server!", request.GetEncoding()))
             .Build();
     }
 
     private static HttpResponse HandleEcho(HttpRequest request)
     {
-        string value = request.RequestTarget["/echo/".Length..];
+        string body = request.RequestTarget["/echo/".Length..];
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody(value, request.GetEncoding())
+            .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
             .Build();
     }
 
 
     private static HttpResponse HandleUserAgent(HttpRequest request)
     {
+        string body = request.Headers.TryGetValue("User-Agent", out var header) 
+            ? header 
+            : string.Empty;
+        
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
-            .SetBody(request.Headers.TryGetValue("User-Agent", out var header) 
-                ? header : string.Empty,
-                request.GetEncoding())
+            .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
             .Build();
     }
 
@@ -235,7 +237,7 @@ class Program
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
             .SetHeader("Content-Type", "application/octet-stream")
-            .SetBody(fileContents, request.GetEncoding())
+            .SetBodyRaw(EncodingHelper.CompressIfNeeded(fileContents, request.GetEncoding()))
             .Build(); 
     }
 
@@ -265,7 +267,7 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.NotFound)
-            .SetBody(body, request.GetEncoding())
+            .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
             .Build();
     }
 }

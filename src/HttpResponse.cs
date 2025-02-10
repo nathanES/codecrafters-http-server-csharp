@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using codecrafters_http_server.Utils;
+using codecrafters_http_server.Utils.Encoding;
 
 namespace codecrafters_http_server;
 
@@ -9,21 +11,28 @@ public class HttpResponse
     public string HttpVersion { get; private set; } = "HTTP/1.1";
     public HttpStatusCode StatusCode { get; private set; }
     public Dictionary<string, string> Headers { get; private set; } = new();
-    public string? Body { get; private set; }
+    public byte[]? BodyRaw { get; private set; }
 
-    public string Format()
+    public byte[] GetRawResponse()
     {
-        var responseBuilder = new StringBuilder();
-        responseBuilder.Append($"{HttpVersion} {(int)StatusCode} {GetReasonPhrase(StatusCode)}\r\n");
-
+        var headerStringBuilder = new StringBuilder();
+        headerStringBuilder.Append($"{HttpVersion} {(int)StatusCode} {GetReasonPhrase(StatusCode)}\r\n");
 
         foreach (var header in Headers)
-            responseBuilder.Append($"{header.Key}: {header.Value}\r\n");
+            headerStringBuilder.Append($"{header.Key}: {header.Value}\r\n");
 
-        responseBuilder.Append("\r\n");
-        if (Body != null)
-            responseBuilder.Append(Body);
-        return responseBuilder.ToString();
+        headerStringBuilder.Append("\r\n");
+
+        var headerBytes = Encoding.ASCII.GetBytes(headerStringBuilder.ToString());
+
+        if (BodyRaw == null || BodyRaw.Length == 0)
+            return headerBytes;
+
+
+        byte[] fullResponse = new byte[headerBytes.Length + BodyRaw.Length];
+        Buffer.BlockCopy(headerBytes, 0, fullResponse, 0, headerBytes.Length);
+        Buffer.BlockCopy(BodyRaw, 0, fullResponse, headerBytes.Length, BodyRaw.Length);
+        return fullResponse;
     }
 
     private static readonly Dictionary<HttpStatusCode, string> StatusReasonPhrases = new()
@@ -69,62 +78,73 @@ public class HttpResponse
             return this;
         }
 
-
-        public HttpResponseBuilder SetBody(string body, EncodingHandled encoding = EncodingHandled.None)
+        public HttpResponseBuilder SetBodyRaw(byte[] bodyRaw)
         {
-            if (string.IsNullOrWhiteSpace(body))
+            if (bodyRaw.Length == 0)
                 return this;
 
-            SetHeaderContentType(body);
-            switch (encoding)
-            {
-                case EncodingHandled.Gzip:
-                    _httpResponse.Body = body;
-                    SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());
-                    SetHeader("Content-Encoding", "gzip");
-                    break;
-                case EncodingHandled.None:
-                default:
-                    _httpResponse.Body = body;
-                    SetHeader("Content-Length", Encoding.UTF8.GetBytes(body).Length.ToString());
-                    break;
-            }
+            SetHeader("Content-Length", bodyRaw.Length.ToString());
+            SetHeaderContentType(bodyRaw);
+            _httpResponse.BodyRaw = bodyRaw;
             return this;
         }
 
-        private void SetHeaderContentType(string body)
+        private void SetHeaderContentType(byte[] rawBody)
         {
             if (_httpResponse.Headers.ContainsKey("Content-Type"))
                 return;
 
             string contentType;
 
-            // Detect JSON (Improved)
-            if (Regex.IsMatch(body.Trim(), @"^\s*(\{.*\}|\[.*\])\s*$"))
-                contentType = "application/json";
+            // ✅ 1️⃣ Check common file signatures (Magic Numbers)
+            if (rawBody.Length >= 4)
+            {
+                if (rawBody[0] == 0x1F && rawBody[1] == 0x8B) contentType = "application/gzip"; // Gzip
+                else if (rawBody[0] == 0x50 && rawBody[1] == 0x4B) contentType = "application/zip"; // ZIP
+                else if (rawBody[0] == 0xFF && rawBody[1] == 0xD8) contentType = "image/jpeg"; // JPEG
+                else if (rawBody[0] == 0x89 && rawBody[1] == 0x50) contentType = "image/png"; // PNG
+                else if (rawBody[0] == 0x25 && rawBody[1] == 0x50) contentType = "application/pdf"; // PDF
+                else if (rawBody[0] == 0x47 && rawBody[1] == 0x49 && rawBody[2] == 0x46)
+                    contentType = "image/gif"; // GIF
+                else
+                {
+                    // ✅ 2️⃣ Try to decode as UTF-8 text and detect JSON/XML/HTML
+                    try
+                    {
+                        string text = Encoding.UTF8.GetString(rawBody);
 
-            // Detect XML (Improved)
-            else if (Regex.IsMatch(body.Trim(), @"^\s*<\?xml|<\w+>.*</\w+>\s*$"))
-                contentType = "application/xml";
+                        if (Regex.IsMatch(text.Trim(), @"^\s*(\{.*\}|\[.*\])\s*$"))
+                            contentType = "application/json"; // JSON
 
-            // Detect HTML
-            else if (body.Contains("<html>", StringComparison.OrdinalIgnoreCase))
-                contentType = "text/html";
+                        else if (Regex.IsMatch(text.Trim(), @"^\s*<\?xml|<\w+>.*</\w+>\s*$"))
+                            contentType = "application/xml"; // XML
 
-            // Detect CSV
-            else if (body.Contains(",") && body.Split('\n').Length > 1)
-                contentType = "text/csv";
+                        else if (text.Contains("<html>", StringComparison.OrdinalIgnoreCase))
+                            contentType = "text/html"; // HTML
 
-            // Detect JavaScript
-            else if (body.TrimStart().StartsWith("function") || body.Contains("console.log"))
-                contentType = "application/javascript";
+                        else if (text.Contains(",") && text.Split('\n').Length > 1)
+                            contentType = "text/csv"; // CSV
 
-            // Default to Plain Text
+                        else if (text.TrimStart().StartsWith("function") || text.Contains("console.log"))
+                            contentType = "application/javascript"; // JavaScript
+
+                        else
+                            contentType = "text/plain"; // Default text
+                    }
+                    catch (Exception)
+                    {
+                        contentType = "application/octet-stream"; // Fallback for unknown binary files
+                    }
+                }
+            }
             else
-                contentType = "text/plain";
+            {
+                contentType = "application/octet-stream"; // Fallback for unknown small files
+            }
 
             SetHeader("Content-Type", contentType);
         }
+
 
         public HttpResponse Build()
         {

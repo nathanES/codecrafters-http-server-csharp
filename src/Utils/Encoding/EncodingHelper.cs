@@ -24,13 +24,13 @@ public static class EncodingHelper
     private static byte[] GzipCompress(byte[] bodyBytes)
     {
         using var memoryStream = new MemoryStream();
-        using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress, true)) // ✅ Keep stream open
+        using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress, true)) 
         {
             gZipStream.Write(bodyBytes, 0, bodyBytes.Length);
-            gZipStream.Flush(); // ✅ Ensures all data is written
+            gZipStream.Flush(); 
         }
 
-        return memoryStream.ToArray(); // ✅ Now contains complete Gzip data
+        return memoryStream.ToArray(); 
     }
 
 }

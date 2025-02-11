@@ -113,7 +113,6 @@ public class HttpResponse
 
             string contentType;
 
-            // ✅ 1️⃣ Check common file signatures (Magic Numbers)
             if (rawBody.Length >= 4)
             {
                 if (rawBody[0] == 0x1F && rawBody[1] == 0x8B) contentType = "application/gzip"; // Gzip
@@ -125,7 +124,6 @@ public class HttpResponse
                     contentType = "image/gif"; // GIF
                 else
                 {
-                    // ✅ 2️⃣ Try to decode as UTF-8 text and detect JSON/XML/HTML
                     try
                     {
                         string text = Encoding.ASCII.GetString(rawBody);

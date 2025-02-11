@@ -33,6 +33,8 @@ public class HttpResponse
         byte[] fullResponse = new byte[headerBytes.Length + BodyRaw.Length];
         Buffer.BlockCopy(headerBytes, 0, fullResponse, 0, headerBytes.Length);
         Buffer.BlockCopy(BodyRaw, 0, fullResponse, headerBytes.Length, BodyRaw.Length);
+        Console.WriteLine($"FullResponse Length : {fullResponse.Length}");
+        Console.WriteLine($"FullResponse : {Encoding.UTF8.GetString(fullResponse)}");
         return fullResponse;
     }
 

@@ -152,6 +152,7 @@ class Program
         return new HttpResponse.HttpResponseBuilder()
             .SetHttpVersion(request.HttpVersion)
             .SetStatusCode(HttpStatusCode.OK)
+            .SetHeader("Content-Type", "text/plain")
             .SetBodyRaw(EncodingHelper.CompressIfNeeded(body, request.GetEncoding()))
             .SetContentEncodingHeader(request.GetEncoding())
             .Build();

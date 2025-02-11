@@ -13,6 +13,7 @@ public static class EncodingHelper
         switch (encoding)
         {
             case EncodingHandled.Gzip:
+                Console.WriteLine("Gzip Compression");
                 return GzipCompress(bodyBytes);
             case EncodingHandled.None :
             default:

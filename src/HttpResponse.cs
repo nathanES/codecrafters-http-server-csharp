@@ -25,6 +25,7 @@ public class HttpResponse
 
         var headerBytes = Encoding.ASCII.GetBytes(headerStringBuilder.ToString());
 
+        Console.WriteLine($"BodyRaw Length : {BodyRaw?.Length}");
         if (BodyRaw == null || BodyRaw.Length == 0)
             return headerBytes;
 

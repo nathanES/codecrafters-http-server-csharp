@@ -8,8 +8,8 @@ public static class EncodingHelper
     {
         if(string.IsNullOrEmpty(body))
             return [];
-        
-        var bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
+        Console.WriteLine($"Body: {body}"); 
+        var bodyBytes = System.Text.Encoding.ASCII.GetBytes(body);
         switch (encoding)
         {
             case EncodingHandled.Gzip:

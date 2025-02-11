@@ -34,7 +34,7 @@ public class HttpResponse
         Buffer.BlockCopy(headerBytes, 0, fullResponse, 0, headerBytes.Length);
         Buffer.BlockCopy(BodyRaw, 0, fullResponse, headerBytes.Length, BodyRaw.Length);
         Console.WriteLine($"FullResponse Length : {fullResponse.Length}");
-        Console.WriteLine($"FullResponse : {Encoding.UTF8.GetString(fullResponse)}");
+        Console.WriteLine($"FullResponse : {Encoding.ASCII.GetString(fullResponse)}");
         return fullResponse;
     }
 
@@ -128,7 +128,7 @@ public class HttpResponse
                     // ✅ 2️⃣ Try to decode as UTF-8 text and detect JSON/XML/HTML
                     try
                     {
-                        string text = Encoding.UTF8.GetString(rawBody);
+                        string text = Encoding.ASCII.GetString(rawBody);
 
                         if (Regex.IsMatch(text.Trim(), @"^\s*(\{.*\}|\[.*\])\s*$"))
                             contentType = "application/json"; // JSON

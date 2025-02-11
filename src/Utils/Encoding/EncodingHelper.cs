@@ -6,7 +6,7 @@ public static class EncodingHelper
 {
     public static byte[] CompressIfNeeded(string body, EncodingHandled encoding)
     {
-        if(string.IsNullOrEmpty(body))
+        if(string.IsNullOrEmpty(body)) 
             return [];
         Console.WriteLine($"Body: {body}"); 
         var bodyBytes = System.Text.Encoding.ASCII.GetBytes(body);

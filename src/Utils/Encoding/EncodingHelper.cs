@@ -1,3 +1,5 @@
+using System.IO.Compression;
+
 namespace codecrafters_http_server.Utils.Encoding;
 
 public static class EncodingHelper
@@ -11,10 +13,18 @@ public static class EncodingHelper
         switch (encoding)
         {
             case EncodingHandled.Gzip:
-                return bodyBytes;
+                return GzipCompress(bodyBytes);
             case EncodingHandled.None :
             default:
                 return bodyBytes;
         }
+    }
+
+    private static byte[] GzipCompress(byte[] bodyBytes)
+    {
+        using var memoryStream = new MemoryStream();
+        using var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress);
+        gZipStream.Write(bodyBytes, 0, bodyBytes.Length);
+        return memoryStream.ToArray();
     }
 }
